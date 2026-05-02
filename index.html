@@ -581,11 +581,7 @@ pre::-webkit-scrollbar-thumb { background:var(--rim2); border-radius:2px; }
           </div>
         </button>
 
-        <div style="display:flex;gap:8px;margin-top:0" id="actionRow">
-          <button class="dl-btn" id="dlBtn" onclick="dl()" style="display:none;flex:1;background:transparent;border:1px solid var(--singularity);border-radius:3px;color:var(--singularity);font-family:'Orbitron',monospace;font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;padding:11px;cursor:pointer;transition:all .2s">⬇ DOWNLOAD</button>
-          <button class="run-btn" id="runBtn" onclick="saveToAE()" style="display:none;flex:2;background:rgba(0,229,255,.08);border:1px solid rgba(0,229,255,.5);border-radius:3px;color:var(--horizon);font-family:'Orbitron',monospace;font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;padding:11px;cursor:pointer;transition:all .2s">▶ SALVAR NA PASTA DO AE</button>
-        </div>
-        <div class="path-hint" id="pathHint" style="display:none;font-family:'VT323',monospace;font-size:12px;color:var(--vdim);letter-spacing:1px;padding:5px 8px;background:rgba(0,0,0,.3);border:1px solid var(--rim);border-radius:2px;margin-top:4px;word-break:break-all;line-height:1.5"></div>
+        <button id="dlBtn" onclick="dl()" style="display:none;width:100%;background:transparent;border:1px solid var(--singularity);border-radius:3px;color:var(--singularity);font-family:'Orbitron',monospace;font-size:11px;font-weight:700;letter-spacing:3px;text-transform:uppercase;padding:13px;cursor:pointer;margin-top:0;transition:all .2s">⬇ DOWNLOAD .JSX</button>
         <div class="sbar" id="sb"></div>
       </div>
     </div>
@@ -640,31 +636,77 @@ pre::-webkit-scrollbar-thumb { background:var(--rim2); border-radius:2px; }
 </div>
 
 <script>
-const PR={
-  intro:"Crie uma intro com o texto 'MINHA EMPRESA' com scale up + fade in dramático, linhas decorativas que se expandem e partículas ao redor. Fundo preto, texto dourado.",
-  lower3:"Lower third com 'JOÃO SILVA' em branco e 'Diretor Executivo' em ciano. Barra colorida entra da esquerda, texto desliza, fica 4s e sai.",
-  logo:"Logo reveal: círculo se expande do centro, linhas se formam, texto 'LOGO' aparece com wipe da esquerda. Flash de luz no final. Fundo preto.",
-  kinetic:"Texto cinético: 'CRIATIVO OUSADO DIFERENTE' — cada palavra entra com bounce e overshoot, cores: vermelho, amarelo, azul. Fundo branco.",
-  particle:"Partículas luminosas se agrupam para formar o texto 'INOVAÇÃO'. Fundo azul escuro, gradiente ciano→roxo.",
-  slide:"Transição slide: tela atual sai esquerda, nova entra pela direita com motion blur. Glitch 2 frames. Duração 1 segundo."
+// ── API Key ──
+function onKeyInput(){
+  var k=document.getElementById('apiKey').value.trim();
+  var s=document.getElementById('keyStatus');
+  if(k.startsWith('AIza')&&k.length>20){
+    localStorage.setItem('cm_key',k);
+    s.textContent='✓ KEY VÁLIDA — SALVA NO NAVEGADOR';
+    s.className='key-status ok';
+  } else if(k.length>0){
+    s.textContent='⚠ DEVE COMEÇAR COM AIza...';
+    s.className='key-status err';
+  } else {
+    localStorage.removeItem('cm_key');
+    s.className='key-status';
+  }
+}
+function toggleKey(){
+  var inp=document.getElementById('apiKey');
+  inp.type=inp.type==='password'?'text':'password';
+}
+function loadKey(){
+  var k=localStorage.getItem('cm_key');
+  if(k){
+    document.getElementById('apiKey').value=k;
+    var s=document.getElementById('keyStatus');
+    s.textContent='✓ KEY SALVA NO NAVEGADOR';
+    s.className='key-status ok';
+  }
+}
+loadKey();
+
+// ── OS ──
+var currentOS=navigator.platform.toLowerCase().includes('mac')?'mac':'win';
+function setOS(os){
+  currentOS=os;
+  document.getElementById('os-win').classList.toggle('active',os==='win');
+  document.getElementById('os-mac').classList.toggle('active',os==='mac');
+}
+if(currentOS==='mac'){
+  document.getElementById('os-win').classList.remove('active');
+  document.getElementById('os-mac').classList.add('active');
+}
+
+// ── Presets ──
+var PR={
+  intro:"Crie uma intro com o texto 'MINHA EMPRESA' com scale up + fade in dramático, linhas decorativas que se expandem. Fundo preto, texto dourado.",
+  lower3:"Lower third com 'JOÃO SILVA' em branco e 'Diretor Executivo' em ciano. Barra entra da esquerda, texto desliza, fica 4s e sai.",
+  logo:"Logo reveal: círculo expande do centro, linhas se formam, texto 'LOGO' aparece com wipe. Flash de luz. Fundo preto.",
+  kinetic:"Texto cinético: 'CRIATIVO OUSADO DIFERENTE' — cada palavra entra com bounce, cores: vermelho, amarelo, azul. Fundo branco.",
+  particle:"Partículas luminosas formam o texto 'INOVAÇÃO'. Fundo azul escuro, gradiente ciano→roxo.",
+  slide:"Transição: tela sai esquerda, nova entra direita com motion blur. Glitch 2 frames. 1 segundo."
 };
 function sp(k){document.getElementById('pr').value=PR[k];document.getElementById('pr').focus();}
 
-let b64=null, mt='image/png', code='';
-
-function fsel(e){const f=e.target.files[0];if(f)load(f);}
+// ── Upload ──
+var b64=null,mt='image/png',code='';
+function fsel(e){var f=e.target.files[0];if(f)loadImg(f);}
 function dov(e){e.preventDefault();document.getElementById('uz').classList.add('over');}
 function dlv(){document.getElementById('uz').classList.remove('over');}
 function drp(e){
-  e.preventDefault();document.getElementById('uz').classList.remove('over');
-  const f=e.dataTransfer.files[0];if(f&&f.type.startsWith('image/'))load(f);
+  e.preventDefault();
+  document.getElementById('uz').classList.remove('over');
+  var f=e.dataTransfer.files[0];
+  if(f&&f.type.startsWith('image/'))loadImg(f);
 }
-
-function load(f){
+function loadImg(f){
   mt=f.type||'image/png';
-  const r=new FileReader();
-  r.onload=ev=>{
-    const d=ev.target.result; b64=d.split(',')[1];
+  var r=new FileReader();
+  r.onload=function(ev){
+    var d=ev.target.result;
+    b64=d.split(',')[1];
     document.getElementById('ri').src=d;
     document.getElementById('rp').classList.add('on');
     document.getElementById('uz').style.display='none';
@@ -672,7 +714,6 @@ function load(f){
   };
   r.readAsDataURL(f);
 }
-
 function remRef(){
   b64=null;
   document.getElementById('ri').src='';
@@ -682,208 +723,146 @@ function remRef(){
   document.getElementById('rf').value='';
 }
 
+// ── Generate ──
 async function gen(){
-  const pr=document.getElementById('pr').value.trim();
-  const apiKey = document.getElementById('apiKey').value.trim();
-  if(!apiKey || apiKey.length < 20){
-    st('err','[ ERRO ] INSIRA SUA GOOGLE GEMINI API KEY (aistudio.google.com)');
+  var apiKey=document.getElementById('apiKey').value.trim();
+  if(!apiKey||!apiKey.startsWith('AIza')){
+    st('err','[ ERRO ] INSIRA SUA GOOGLE GEMINI API KEY');
     document.getElementById('apiKey').focus();
     return;
   }
+  var pr=document.getElementById('pr').value.trim();
   if(!pr&&!b64){st('err','[ ERRO ] INSIRA UMA REFERÊNCIA OU DESCRIÇÃO');return;}
 
-  const btn=document.getElementById('gb');
-  btn.disabled=true; btn.classList.add('loading');
-  document.getElementById('bt').textContent=b64?'ANALISANDO REFERÊNCIA...':'GERANDO SCRIPT...';
+  var btn=document.getElementById('gb');
+  btn.disabled=true;
+  btn.classList.add('loading');
+  document.getElementById('bt').textContent=b64?'ANALISANDO COM GEMINI...':'GERANDO COM GEMINI...';
   document.getElementById('sb').className='sbar';
-  document.getElementById('outStatus').textContent='PROCESSANDO';
 
-  const dur=document.getElementById('dur').value;
-  const fps=document.getElementById('fps').value;
-  const res=document.getElementById('res').value;
-  const sty=document.getElementById('sty').value;
-  const [w,h]=res.split('x');
+  var dur=document.getElementById('dur').value;
+  var fps=document.getElementById('fps').value;
+  var res=document.getElementById('res').value;
+  var sty=document.getElementById('sty').value;
+  var wh=res.split('x');var w=wh[0];var h=wh[1];
 
-  const sys=`Você é especialista em ExtendScript para Adobe After Effects.
+  var sys='Você é especialista em ExtendScript para Adobe After Effects.
 Gere APENAS código ExtendScript (.jsx) válido. SEM explicações, markdown ou backticks.
-Inicie com // (comentário). Use a API AE corretamente: addComp(), addText(), addSolid(), addShape(), setValueAtTime(), KeyframeEase.
-Comentários em português. Script auto-executável que cria tudo automaticamente ao rodar.`;
+Inicie com // (comentário). Use a API AE: addComp(), addText(), addSolid(), addShape(), setValueAtTime(), KeyframeEase.
+Comentários em português. Script auto-executável.';
 
-  const uc=[];
-  if(b64){
-    uc.push({type:'image',source:{type:'base64',media_type:mt,data:b64}});
-    uc.push({type:'text',text:`Analise esta referência: cores exatas, tipografia, layout, elementos, estilo visual.\n\n${pr?'INSTRUÇÃO: '+pr+'\n\n':'Recrie como animação no After Effects.\n\n'}SPECS: ${w}×${h}px | ${fps}fps | ${dur}s | ${sty}\n\nGere ExtendScript que:\n1. Cria composição com essas dimensões\n2. Recria elementos visuais da referência\n3. Animações coerentes com o estilo\n4. Keyframes com easing (KeyframeEase)\n5. Layers nomeadas descritivamente\n6. Comentários em português\n\nGere APENAS o .jsx:`});
-  } else {
-    uc.push({type:'text',text:`ANIMAÇÃO: ${pr}\nSPECS: ${w}×${h}px | ${fps}fps | ${dur}s | ${sty}\n\nCrie: composição, layers (texto/sólidos/shapes/nulls), keyframes com easing, expressões quando necessário, nomes descritivos, comentários em português.\n\nGere APENAS o .jsx:`});
-  }
+  var textPrompt=b64
+    ?'Analise esta referência: cores, tipografia, layout, estilo.
+
+'+(pr?'INSTRUÇÃO: '+pr+'
+
+':'Recrie no After Effects.
+
+')+'SPECS: '+w+'×'+h+'px | '+fps+'fps | '+dur+'s | '+sty+'
+
+Gere APENAS o .jsx:'
+    :'ANIMAÇÃO: '+pr+'
+SPECS: '+w+'×'+h+'px | '+fps+'fps | '+dur+'s | '+sty+'
+
+Composição + layers + keyframes com easing + comentários PT.
+
+Gere APENAS o .jsx:';
+
+  var parts=[];
+  if(b64) parts.push({inlineData:{mimeType:mt,data:b64}});
+  parts.push({text:textPrompt});
+
+  var body=JSON.stringify({
+    system_instruction:{parts:[{text:sys}]},
+    contents:[{role:'user',parts:parts}],
+    generationConfig:{maxOutputTokens:4096,temperature:0.7}
+  });
 
   try{
-    // Monta partes para Gemini (suporta texto + imagem)
-    const parts = [];
-    if(b64){
-      parts.push({inlineData:{mimeType:mt,data:b64}});
-    }
-    parts.push({text: uc[uc.length-1].text});
-
-    const geminiBody = {
-      system_instruction:{parts:[{text:sys}]},
-      contents:[{role:"user", parts:parts}],
-      generationConfig:{maxOutputTokens:4096,temperature:0.7}
-    };
-
-    const resp=await fetch(
-      "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key="+apiKey,
-      {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(geminiBody)}
+    var resp=await fetch(
+      'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key='+apiKey,
+      {method:'POST',headers:{'Content-Type':'application/json'},body:body}
     );
-    const data=await resp.json();
+    var data=await resp.json();
     if(data.error) throw new Error(data.error.message);
-    let c = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-    c=c.replace(/^```[\w]*\n?/gm,'').replace(/```\s*$/gm,'').trim();
-    code=c; render(c);
-    document.getElementById('outStatus').textContent='SCRIPT PRONTO';
-    onScriptGenerated(); st('ok',b64?'[ OK ] REFERÊNCIA ANALISADA — SCRIPT PRONTO':'[ OK ] SCRIPT GERADO — CLIQUE EM SALVAR NO AE');
+    var c=data.candidates&&data.candidates[0]&&data.candidates[0].content&&data.candidates[0].content.parts&&data.candidates[0].content.parts[0]?data.candidates[0].content.parts[0].text:'';
+    if(!c) throw new Error('Resposta vazia do Gemini');
+    c=c.replace(/```[\w]*
+?/g,'').replace(/```/g,'').trim();
+    code=c;
+    renderCode(c);
+    document.getElementById('dlBtn').style.display='block';
+    st('ok',b64?'[ OK ] REFERÊNCIA ANALISADA — SCRIPT PRONTO':'[ OK ] SCRIPT GERADO — CLIQUE EM SALVAR NO AE');
   }catch(e){
-    document.getElementById('outStatus').textContent='ERRO';
     st('err','[ ERRO ] '+e.message);
-    document.getElementById('out').innerHTML=`<div class="empty"><div class="eico">✕</div><div class="etxt">FALHA NA TRANSMISSÃO<br>${e.message}</div></div>`;
+    document.getElementById('out').innerHTML='<div class="empty"><div class="eico">✕</div><div class="etxt">FALHA NA TRANSMISSÃO<br>'+e.message+'</div></div>';
   }finally{
-    btn.disabled=false; btn.classList.remove('loading');
+    btn.disabled=false;
+    btn.classList.remove('loading');
     document.getElementById('bt').textContent='[ GERAR SCRIPT .JSX ]';
   }
 }
 
-function render(c){
-  let h=c
+// ── Render ──
+function renderCode(c){
+  var h=c
     .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
-    .replace(/(\/\/[^\n]*)/g,'<span class="cm">$1</span>')
-    .replace(/("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*')/g,'<span class="st">$1</span>')
-    .replace(/\b(var|let|const|function|return|if|else|for|while|new|true|false|null|undefined|try|catch|this)\b/g,'<span class="kw">$1</span>')
-    .replace(/\b(\d+\.?\d*)\b/g,'<span class="nm">$1</span>');
-  document.getElementById('out').innerHTML=`
-    <div class="ctbar fi">
-      <span class="clang">EXTENDSCRIPT · .JSX</span>
-      <div class="tact">
-        <button class="cbtn" onclick="cp()">COPIAR</button>
-        <button class="dbtn" onclick="dl()">DOWNLOAD .JSX</button>
-      </div>
-    </div>
-    <pre class="fi">${h}</pre>`;
+    .replace(/(\/\/[^
+]*)/g,'<span class="cm">$1</span>')
+    .replace(/("(?:[^"\]|\.)*"|'(?:[^'\]|\.)*')/g,'<span class="st">$1</span>')
+    .replace(/(var|let|const|function|return|if|else|for|while|new|true|false|null|undefined|try|catch|this)/g,'<span class="kw">$1</span>')
+    .replace(/(\d+\.?\d*)/g,'<span class="nm">$1</span>');
+  document.getElementById('out').innerHTML='<div class="ctbar fi"><span class="clang">EXTENDSCRIPT · .JSX</span><div class="tact"><button class="cbtn" onclick="cp()">COPIAR</button><button class="dbtn" onclick="dl()">DOWNLOAD</button></div></div><pre class="fi">'+h+'</pre>';
 }
 
-
-// ── API Key ──
-function onKeyInput(){
-  const k = document.getElementById('apiKey').value.trim();
-  const s = document.getElementById('keyStatus');
-  if(k.startsWith('AIza') && k.length > 20){
-    localStorage.setItem('cm_key', k);
-    s.textContent = '✓ KEY VÁLIDA — SALVA NO NAVEGADOR';
-    s.className = 'key-status ok';
-  } else if(k.length > 0){
-    s.textContent = '⚠ DEVE COMEÇAR COM AIza...';
-    s.className = 'key-status err';
-  } else {
-    localStorage.removeItem('cm_key');
-    s.className = 'key-status';
-  }
-}
-function toggleKey(){
-  const inp = document.getElementById('apiKey');
-  inp.type = inp.type === 'password' ? 'text' : 'password';
-}
-function loadKey(){
-  const k = localStorage.getItem('cm_key');
-  if(k){
-    document.getElementById('apiKey').value = k;
-    const s = document.getElementById('keyStatus');
-    s.textContent = '✓ KEY SALVA NO NAVEGADOR';
-    s.className = 'key-status ok';
-  }
-}
-loadKey();
-
-// ── OS ──
-let currentOS = navigator.platform.toLowerCase().includes('mac') ? 'mac' : 'win';
-function setOS(os){
-  currentOS = os;
-  document.getElementById('os-win').classList.toggle('active', os==='win');
-  document.getElementById('os-mac').classList.toggle('active', os==='mac');
-}
-// auto-detect
-if(currentOS === 'mac'){
-  document.getElementById('os-win').classList.remove('active');
-  document.getElementById('os-mac').classList.add('active');
-}
-
+// ── Salvar / Download ──
 function getAEPath(){
-  if(currentOS === 'win'){
-    return 'C:\\Program Files\\Adobe\\Adobe After Effects 2025\\Support Files\\Scripts\\ScriptUI Panels\\';
-  } else {
-    return '/Applications/Adobe After Effects 2025/Scripts/ScriptUI Panels/';
-  }
-}
-
-function cp(){navigator.clipboard.writeText(code).then(()=>st('ok','[ OK ] COPIADO PARA ÁREA DE TRANSFERÊNCIA'));}
-
-function dl(){
-  const bl=new Blob([code],{type:'text/javascript'});
-  const u=URL.createObjectURL(bl);
-  const a=document.createElement('a'); a.href=u; a.download='chaotic_motion.jsx'; a.click();
-  URL.revokeObjectURL(u);
-  st('ok','[ OK ] DOWNLOAD: chaotic_motion.jsx');
+  return currentOS==='mac'
+    ?'/Applications/Adobe After Effects 2025/Scripts/ScriptUI Panels/'
+    :'C:\Program Files\Adobe\Adobe After Effects 2025\Support Files\Scripts\ScriptUI Panels\';
 }
 
 function saveToAE(){
-  if(!code){ st('err','[ ERRO ] GERE UM SCRIPT PRIMEIRO'); return; }
-
-  // Salva o arquivo com nome timestampado
-  const ts = new Date().toISOString().slice(0,19).replace(/[:\-T]/g,'').slice(0,14);
-  const fname = 'chaotic_' + ts + '.jsx';
-
-  // Tenta usar showSaveFilePicker API (Chrome/Edge modernos)
+  if(!code){st('err','GERE UM SCRIPT PRIMEIRO');return;}
+  var fname='chaotic_'+Date.now()+'.jsx';
   if(window.showSaveFilePicker){
-    const aePath = getAEPath();
     window.showSaveFilePicker({
-      suggestedName: fname,
+      suggestedName:fname,
       types:[{description:'ExtendScript',accept:{'text/javascript':['.jsx']}}]
-    }).then(async fh => {
-      const w = await fh.createWritable();
+    }).then(async function(fh){
+      var w=await fh.createWritable();
       await w.write(code);
       await w.close();
-      document.getElementById('pathHint').textContent = '✓ SALVO — agora no AE: File → Scripts → Run Script File';
-      document.getElementById('pathHint').classList.add('on');
-      st('ok','[ OK ] ARQUIVO SALVO — abra no AE via File → Scripts → Run Script File');
-    }).catch(()=>{
-      // Usuário cancelou ou browser não suporta — fallback para download
-      dl();
-      showAEPath(fname);
-    });
+      var hint=document.getElementById('pathHint');
+      hint.textContent='✓ SALVO! No AE: File → Scripts → Run Script File';
+      hint.style.display='block';
+      st('ok','[ OK ] SALVO — abra no AE via File → Scripts → Run Script File');
+    }).catch(function(){dl();showPath(fname);});
   } else {
-    // Fallback: download normal + mostra o caminho pra colar
-    dl();
-    showAEPath(fname);
+    dl();showPath(fname);
   }
 }
 
-function showAEPath(fname){
-  const path = getAEPath();
-  const hint = document.getElementById('pathHint');
-  hint.innerHTML = '→ MOVA O ARQUIVO PARA:<br><strong>' + path + '</strong><br>Depois: File → Scripts → ' + fname;
-  hint.classList.add('on');
+function showPath(fname){
+  var hint=document.getElementById('pathHint');
+  hint.innerHTML='→ MOVA PARA: <strong>'+getAEPath()+'</strong>';
+  hint.style.display='block';
 }
 
-function onScriptGenerated(){
-  var rb = document.getElementById('runBtn');
-  var db = document.getElementById('dlBtn');
-  if(rb) rb.style.display = 'block';
-  if(db) db.style.display = 'block';
+function cp(){navigator.clipboard.writeText(code).then(function(){st('ok','[ OK ] COPIADO!');});}
+function dl(){
+  var bl=new Blob([code],{type:'text/javascript'});
+  var u=URL.createObjectURL(bl);
+  var a=document.createElement('a');a.href=u;a.download='chaotic_motion.jsx';a.click();
+  URL.revokeObjectURL(u);
+  st('ok','[ OK ] DOWNLOAD: chaotic_motion.jsx');
 }
-
 function st(t,m){
-  const b=document.getElementById('sb'); b.textContent=m; b.className='sbar '+t;
-  setTimeout(()=>{b.className='sbar';},5000);
+  var b=document.getElementById('sb');b.textContent=m;b.className='sbar '+t;
+  setTimeout(function(){b.className='sbar';},6000);
 }
-document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key==='Enter')gen();});
+document.addEventListener('keydown',function(e){if((e.ctrlKey||e.metaKey)&&e.key==='Enter')gen();});
+</script>
 </script>
 </body>
 </html>

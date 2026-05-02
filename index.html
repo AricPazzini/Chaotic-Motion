@@ -290,7 +290,7 @@ async function gen(){
   var wh=document.getElementById('res').value.split('x');
   var sty=document.getElementById('sty').value;
 
-  var sys='Você é especialista em ExtendScript para Adobe After Effects. Gere APENAS código ExtendScript (.jsx) válido, sem explicações, markdown ou backticks. Inicie com // e use a API AE: addComp(), addText(), addSolid(), addShape(), setValueAtTime(), KeyframeEase. Comentários em português. Script auto-executável.';
+  var sys='Você é especialista em ExtendScript para Adobe After Effects CC 2025.\nREGRAS CRÍTICAS:\n1. Gere APENAS código .jsx válido — sem markdown, sem backticks, sem explicações\n2. SEMPRE feche todos os blocos: cada { deve ter seu }, cada ( deve ter seu )\n3. SEMPRE termine o script com app.project.activeItem sendo a nova comp\n4. Use APENAS funções nativas do AE: addComp(), addText(), addSolid(), addShape()\n5. Para texto: var tl = comp.layers.addText("texto"); var td = tl.sourceText.value; td.fontSize = 80; tl.sourceText.setValue(td);\n6. Para keyframes: layer.transform.opacity.setValueAtTime(0, 0); layer.transform.opacity.setValueAtTime(100, 1);\n7. Comentários em português\n8. VERIFIQUE mentalmente se todos os blocos estão fechados antes de retornar';
   var txt=b64
     ?'Analise a referência: cores, tipografia, layout.\n\n'+(pr?'INSTRUÇÃO: '+pr+'\n\n':'Recrie como animação.\n\n')+'SPECS: '+wh[0]+'x'+wh[1]+'px | '+fps+'fps | '+dur+'s | '+sty+'\n\nGere APENAS o .jsx:'
     :'ANIMAÇÃO: '+pr+'\nSPECS: '+wh[0]+'x'+wh[1]+'px | '+fps+'fps | '+dur+'s | '+sty+'\n\nGere APENAS o .jsx:';
